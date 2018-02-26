@@ -25,6 +25,11 @@ include(GrPlatform) #define LIB_SUFFIX
 include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 
+file(GLOB starcoder_sources ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+file(GLOB starcoder_sources ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
+file(GLOB starcoder_sources ${CMAKE_CURRENT_SOURCE_DIR}/*.cc)
+
+
 list(APPEND starcoder_sources
 )
 

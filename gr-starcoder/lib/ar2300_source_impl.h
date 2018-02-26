@@ -22,12 +22,16 @@
 #define INCLUDED_STARCODER_AR2300_SOURCE_IMPL_H
 
 #include <starcoder/ar2300_source.h>
+#include "ar2300_receiver.h"
 
 namespace gr {
   namespace starcoder {
 
     class ar2300_source_impl : public ar2300_source
     {
+     protected:
+      std::unique_ptr<ar2300_receiver> receiver;
+
      private:
       // Nothing to declare in this block.
 

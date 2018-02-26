@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2018 <+YOU OR YOUR COMPANY+>.
+ * Copyright 2018 Infostellar, Inc.
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,14 +41,18 @@ namespace gr {
     ar2300_source_impl::ar2300_source_impl()
       : gr::sync_block("ar2300_source",
               gr::io_signature::make(0, 0, 0),
-              gr::io_signature::make(<+MIN_OUT+>, <+MAX_OUT+>, sizeof(<+OTYPE+>)))
-    {}
+              gr::io_signature::make(1, 1, sizeof(gr_complex))),
+        receiver(new ar2300_receiver())
+    {
+      receiver->initialize();
+    }
 
     /*
      * Our virtual destructor.
      */
     ar2300_source_impl::~ar2300_source_impl()
     {
+      receiver->stop();
     }
 
     int
@@ -56,9 +60,9 @@ namespace gr {
         gr_vector_const_void_star &input_items,
         gr_vector_void_star &output_items)
     {
-      <+OTYPE+> *out = (<+OTYPE+> *) output_items[0];
+      gr_complex *out = (gr_complex *) output_items[0];
 
-      // Do <+signal processing+>
+
 
       // Tell runtime system how many output items we produced.
       return noutput_items;
