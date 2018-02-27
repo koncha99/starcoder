@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <block>
-  <name>ar2300_source</name>
+  <name>AR2300 Source</name>
   <key>starcoder_ar2300_source</key>
   <category>[starcoder]</category>
   <import>import starcoder</import>

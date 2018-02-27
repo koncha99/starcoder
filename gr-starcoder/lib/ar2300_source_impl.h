@@ -33,7 +33,15 @@ namespace gr {
       std::unique_ptr<ar2300_receiver> receiver;
 
      private:
-      // Nothing to declare in this block.
+      char* buf;
+      int   buf_size;
+      int   timeout_ms;
+
+      char  sample[4];
+      int   sample_index = 0;
+
+      int encode_ar2300(char* in, int size, gr_complex* out);
+      gr_complex parse_sample() const;
 
      public:
       ar2300_source_impl();

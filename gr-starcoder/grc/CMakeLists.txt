@@ -17,6 +17,12 @@
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
 
+
+list(APPEND enabled_blocks
+  starcoder_ar2300_source.xml
+)
+
 install(FILES
+    ${enabled_blocks}
     DESTINATION share/gnuradio/grc/blocks
 )

@@ -44,6 +44,9 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(gr_complex))),
         receiver(new ar2300_receiver())
     {
+      buf_size = 10240;
+      timeout_ms = 1000;
+      buf = new char[buf_size];
       receiver->initialize();
     }
 
@@ -53,6 +56,9 @@ namespace gr {
     ar2300_source_impl::~ar2300_source_impl()
     {
       receiver->stop();
+      if (buf != NULL) {
+         delete[](buf);
+      }
     }
 
     int
@@ -62,11 +68,48 @@ namespace gr {
     {
       gr_complex *out = (gr_complex *) output_items[0];
 
+      int ret = receiver->read(buf, buf_size, timeout_ms);
+      if (ret == 0) {
+        return noutput_items;
+      }
 
+      int outSize = encode_ar2300(buf, ret, out);
 
       // Tell runtime system how many output items we produced.
-      return noutput_items;
+      return outSize;
     }
+
+    int
+    ar2300_source_impl::encode_ar2300(char* in,
+                              const int inSize,
+                              gr_complex* out)
+    {
+      int out_index = 0;
+      for (int i = 0; i < inSize; ++i) {
+        sample[sample_index++] = in[i];
+
+        if (sample_index == 8) {
+          sample_index = 0;
+          gr_complex value = parse_sample();
+          out[out_index++] = value;
+        }
+      }
+
+      return out_index;
+    }
+
+    gr_complex
+    ar2300_source_impl::parse_sample() const
+    {
+      float real = ((sample[0] << 24) | (sample[1] << 16 & 16646144) |
+                                  (sample[2] << 9 & 130560) | (sample[3] << 1 & 508)) >>
+                                 2;
+      float imag = ((sample[4] << 24) | (sample[5] << 16 & 16646144) |
+                                  (sample[6] << 9 & 130560) | (sample[7] << 1 & 508)) >>
+                                 2;
+      return gr_complex(real, imag);
+    }
+
 
   } /* namespace starcoder */
 } /* namespace gr */
