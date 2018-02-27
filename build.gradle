@@ -38,12 +38,61 @@ buildscript {
 }
 
 apply plugin: 'org.curioswitch.gradle-curiostack-plugin'
+apply plugin: 'org.curioswitch.gradle-grpc-api-plugin'
 apply plugin: 'com.github.blindpirate.gogradle'
 
 golang {
     version = '1.10'
     packagePath = 'github.com/infostellarinc/starcoder'
 }
+
+def gopath = System.env['GOPATH'] ?: project.file('.gogradle/project_gopath').toString()
+println gopath
+
+protobuf {
+    generateProtoTasks {
+        all().each { task ->
+            task.plugins {
+                gofast {
+                    option 'plugins=grpc'
+                    option 'Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types'
+                    option 'Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types'
+                    // Output into root directory for gogradle
+                    outputSubDir = '../../../../..'
+                }
+            }
+        }
+    }
+    plugins {
+        gofast {
+            path = project.file("${gopath}/bin/protoc-gen-gofast")
+        }
+    }
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir 'api'
+        }
+    }
+}
+
+task getProtocGoPlugin(type: com.github.blindpirate.gogradle.Go) {
+    outputs.file project.file("${gopath}/bin/protoc-gen-gofast")
+    go 'get -u github.com/gogo/protobuf/protoc-gen-gofast'
+}
+
+task deleteGeneratedFiles(type: Delete) {
+    delete fileTree(project.projectDir) {
+        include '**/*.pb.go'
+        include '**/*.mock.go'
+        include '**/rice-box.go'
+    }
+    delete '.gogradle'
+    delete 'vendor'
+}
+tasks.clean.dependsOn deleteGeneratedFiles
 
 gcloud {
     clusterBaseName = 'infostellar-starcoder'
@@ -55,3 +104,95 @@ task wrapper(type: Wrapper) {
     distributionType = 'ALL'
 }
 
+// protobuf-gradle-plugin always apply Java plugin, but we don't need it.
+tasks.compileJava.enabled = false
+tasks.compileTestJava.enabled = false
+
+license {
+    header file('LICENSE.header')
+    mapping {
+        proto = 'SLASHSTAR_STYLE'
+    }
+}
+
+
+task depGet(type: com.github.blindpirate.gogradle.Go) {
+    outputs.file project.file("${gopath}/bin/dep")
+    go 'get -u github.com/golang/dep/cmd/dep'
+    doLast {
+        // Remove dep source code since it contains invalid symlinks that break gradle.
+        project.delete project.file("${gopath}/src/github.com/golang/dep")
+    }
+}
+
+task getRice(type: com.github.blindpirate.gogradle.Go) {
+    go 'get -u github.com/GeertJohan/go.rice/...'
+}
+
+task useRice(type:Exec) {
+    dependsOn getRice
+    inputs.dir 'flowgraphs'
+    outputs.file 'cmd/rice-box.go'
+
+    workingDir project.file('cmd').toString()
+    commandLine project.file('.gogradle/project_gopath/bin/rice').toString(), 'embed-go'
+}
+
+tasks.goBuild.dependsOn useRice
+
+def buildManager = tasks.goBuild.buildManager
+
+afterEvaluate {
+    task depEnsure(type: Exec) {
+        dependsOn depGet
+
+        inputs.file 'Gopkg.toml'
+        inputs.file 'Gopkg.lock'
+        outputs.dir 'vendor'
+
+        // TODO(anuraaga): Figure out why just setting workingDir doesn't work
+        commandLine 'sh', '-c', "cd ${gopath}/src/github.com/infostellarinc/starcoder && " +
+                "${project.file(gopath)}/bin/dep ensure -vendor-only"
+        environment = [
+                'DEPCACHEDIR': new File(gradle.gradleUserHomeDir, 'go/dep-cache').toString(),
+                'GOPATH'     : gopath,
+                'PATH': System.env['PATH']
+        ]
+        // workingDir "${gopath}/src/github.com/infostellarinc/starcoder"
+    }
+
+    task depUpdate(type: Exec) {
+        dependsOn depGet
+
+        inputs.file 'Gopkg.toml'
+        outputs.file 'Gopkg.lock'
+
+        // TODO(anuraaga): Figure out why just setting workingDir doesn't work
+        commandLine 'sh', '-c', "cd ${gopath}/src/github.com/infostellarinc/starcoder && " +
+                "${project.file(gopath)}/bin/dep ensure -no-vendor"
+        environment = [
+                'DEPCACHEDIR': new File(gradle.gradleUserHomeDir, 'go/dep-cache').toString(),
+                'GOPATH'     : gopath,
+                'PATH': System.env['PATH']
+        ]
+        // workingDir "${gopath}/src/github.com/infostellarinc/starcoder"
+    }
+
+    tasks.goVendor.dependsOn depEnsure
+    tasks.depEnsure.dependsOn tasks.generateProto
+    tasks.generateProto.dependsOn getProtocGoPlugin
+    tasks.goBuild.dependsOn tasks.generateProto
+
+    tasks.withType(com.github.blindpirate.gogradle.Go) {
+        if (it.name.startsWith('build')) {
+            dependsOn tasks.goVendor
+        }
+    }
+}
+
+// We use dep for dependency management, so disable all of gogradle's
+tasks.installDependencies.enabled = false
+tasks.resolveBuildDependencies.enabled = false
+tasks.resolveTestDependencies.enabled = false
+
+tasks.build.dependsOn tasks.goBuild

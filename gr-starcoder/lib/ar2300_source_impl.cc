@@ -1,5 +1,5 @@
 /* -*- c++ -*- */
-/* 
+/*
  * Copyright 2018 Infostellar, Inc.
  * 
  * This is free software; you can redistribute it and/or modify
@@ -109,7 +109,6 @@ namespace gr {
                                  2;
       return gr_complex(real, imag);
     }
-
 
   } /* namespace starcoder */
 } /* namespace gr */

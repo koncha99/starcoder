@@ -15,3 +15,5 @@
 GR_SWIG_BLOCK_MAGIC2(starcoder, ar2300_source)
 
 
+%include "starcoder/ar2300_source.h"
+GR_SWIG_BLOCK_MAGIC2(starcoder, ar2300_source);
