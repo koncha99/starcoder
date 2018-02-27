@@ -26,6 +26,10 @@ include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 
 list(APPEND starcoder_sources
+    init.c
+    driver.c
+    firmware.c
+    ar2300_receiver.cc
     ar2300_source_impl.cc
 )
 
